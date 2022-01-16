@@ -33,14 +33,21 @@ const getNotes = () =>
     },
   });
 
-const saveNote = (note) =>
+saveNoteBtn.addEventListener('click', function () {
+  const noteText = noteText.value;
   fetch('/api/notes', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(note),
-  });
+    body: JSON.stringify({
+      text: noteText,
+    })
+  }).then(res => res.json())
+    .then(note => {
+      
+    })
+});
 
 const deleteNote = (id) =>
   fetch(`/api/notes/${id}`, {
