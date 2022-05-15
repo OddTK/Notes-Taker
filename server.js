@@ -1,23 +1,22 @@
 const express = require("express");
-const fs = require("fs");
 const path = require("path");
+const notes = require("./db/db.json");
+const fs = require("fs");
 const util = require("util");
-
-const uuid = require("./helper/uuid");
 
 const PORT = process.env.PORT || 3001;
 const app = express();
 app.use(express.static("public"));
 
+const uuid = require("./helpers/uuid");
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/notes", function (req, res) {
-  res.sendFile(path.join(__dirname, "./public/notes.html"));
-});
-app.get("/", function (req, res) {
-  res.sendFile(path.join(__dirname, "./public/index.html"));
-});
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "/public/")));
+app.get("/notes", (req, res) =>
+  res.sendFile(path.join(__dirname, "public/notes.html"))
+);
 
 // API Routes
 // Promise version of fs.readFile
@@ -69,6 +68,45 @@ app.post("/api/notes", (req, res) => {
   } else {
     res.error("Error adding note");
   }
+});
+
+// DELETE Route
+// api/notes delete route, to delete notes.
+app.delete("/api/notes/:id", (req, res) => {
+  console.info(`${req.method} request received for a note`);
+  // get the note id from the query params
+  const noteId = req.params.id;
+
+  // create empty newNotes array
+  let newNotes = [];
+
+  // iterate through notes to check each note for the id of the
+  // note to be deleted.
+  for (const key in notes) {
+    // check to see if there is a note at the current position (key)
+    if (notes.hasOwnProperty(key)) {
+      // check to see if the id of the current object is not equal
+      // to the noteId.  If it is not equal push it to the newNotes array
+      if (notes[key].id !== noteId) {
+        newNotes.push(notes[key]);
+      }
+    }
+  }
+  // The newNotes array contains every object except the object that
+  // the user is deleting.
+  // Write the newNotes to the db.json file
+  fs.writeFile("./db/db.json", JSON.stringify(newNotes), (err) => {
+    // if there is an error
+    if (err) {
+      console.log(err);
+      return;
+      // when the not file has been written
+    } else {
+      console.log("Your notes has been updated!");
+    }
+  });
+
+  res.send();
 });
 
 app.listen(PORT, () => console.log(`On port: ${PORT}`));
