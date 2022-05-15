@@ -1,63 +1,74 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const util = require('util');
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const util = require("util");
 
-const uuid = require('./helper/uuid');
+const uuid = require("./helper/uuid");
 
 const PORT = process.env.PORT || 3001;
 const app = express();
-app.use(express.static('public'));
+app.use(express.static("public"));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/notes', function (req, res) {
-    res.sendFile(path.join(__dirname, './public/notes.html'));
+app.get("/notes", function (req, res) {
+  res.sendFile(path.join(__dirname, "./public/notes.html"));
 });
-app.get('*', function (req, res) {
-    res.sendFile(path.join(__dirname, './public/index.html'));
-});
-
-const checkBodyForText = (req, res, next) => {
-    if (req.body?.text.length === 0) {
-        return res.status(401).json({ error: 'You must create a new note'});
-    } else {
-        next();
-    }
-};
-
-app.post('/api/notes', checkBodyForText, (req, res) => {
-    const newNote = {
-        title: req.body.title,
-        text: req.body.text,
-        id: uuid,
-    };
-    notes.push(newNote);
-    res.json(newNote);
+app.get("/", function (req, res) {
+  res.sendFile(path.join(__dirname, "./public/index.html"));
 });
 
-const readFileAsync = util.promisify(fs.readfile);
+// API Routes
+// Promise version of fs.readFile
+const readFromFile = util.promisify(fs.readFile);
 
-const writeFileAsync = (destination, content) =>
-    fs.writeFileAsync(destination, JSON.stringify(content, null, 4), (err) =>
+const writeToFile = (destination, content) =>
+  fs.writeFile(destination, JSON.stringify(content, null, 4), (err) =>
     err ? console.error(err) : console.info(`\nData written to ${destination}`)
-    );
+  );
 
-const readAndApend = (content, file) => {
-    fs.readFile(file, 'utf8', (err, data) => {
-        if (err) {
-            console.error(err);
-        } else {
-            const parsedData = JSON.parse(data);
-            parsedData.push(content);
-            writeFileAsync(file, parsedData);
-        }
-    });
+const readAndAppend = (content, file) => {
+  fs.readFile(file, "utf8", (err, data) => {
+    if (err) {
+      console.error(err);
+    } else {
+      const parsedData = JSON.parse(data);
+      parsedData.push(content);
+      writeToFile(file, parsedData);
+    }
+  });
 };
 
+// API/Notes route
+app.get("/api/notes", (req, res) => {
+  console.info(`${req.method} request received for notes`);
+  readFromFile("./db/db.json").then((data) => res.json(JSON.parse(data)));
+});
 
+// POST Route
+// API/Notes post route to write new notes
+app.post("/api/notes", (req, res) => {
+  // Log that a POST request was received
+  console.info(`${req.method} request received to add a note`);
 
+  // Destructuring assignment for the items in req.body
+  const { title, text } = req.body;
 
+  // If all the required properties are present
+  if (title && text) {
+    // Variable for the object we will save
+    const newNote = {
+      title,
+      text,
+      id: uuid(),
+    };
+
+    readAndAppend(newNote, "./db/db.json");
+    res.json(`Note added successfully`);
+  } else {
+    res.error("Error adding note");
+  }
+});
 
 app.listen(PORT, () => console.log(`On port: ${PORT}`));
